@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import RobertaModel
 
-META_DIM = 9
+META_DIM = 14
 
 
 class GatedFusionModel(nn.Module):

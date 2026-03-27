@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-META_DIM = 9
+META_DIM = 14
 
 CATEGORIES = [
     'Home_and_Kitchen',
@@ -36,6 +36,13 @@ def extract_metadata(df):
     meta['type_token_ratio']    = df['text'].apply(
         lambda x: len(set(x.lower().split())) / (len(x.split()) + 1))
     meta['rating'] = df['rating'].fillna(3.0).astype(float)
+    # One-hot encode the category to give it a vital role
+    all_categories = ['Electronics', 'Home_and_Kitchen', 'Toys_and_Games', 
+                      'Sports_and_Outdoors', 'Clothing_Shoes_and_Jewelry']
+    for cat in all_categories:
+        meta[f'category_{cat}'] = (df['category'] == cat).astype(float)
+        
+    # return meta.values.astype(np.float32)
     return meta.values.astype(np.float32)
 
 
