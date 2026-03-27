@@ -1,219 +1,259 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Fake Review Detector</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 720px;
-            margin: 40px auto;
-            padding: 0 20px;
-            background: #f0f2f5;
-            color: #1a1a1a;
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        max-width: 720px;
+        margin: 40px auto;
+        padding: 0 20px;
+        background: #f0f2f5;
+        color: #1a1a1a;
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 8px;
+        font-size: 28px;
+        color: #111;
+      }
+      .subtitle {
+        text-align: center;
+        color: #666;
+        margin-bottom: 24px;
+        font-size: 14px;
+      }
+      .card {
+        background: #fff;
+        padding: 28px;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 600;
+        font-size: 14px;
+        color: #333;
+      }
+      textarea {
+        width: 100%;
+        height: 130px;
+        padding: 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        resize: vertical;
+        font-size: 14px;
+        font-family: inherit;
+        transition: border-color 0.2s;
+      }
+      textarea:focus {
+        outline: none;
+        border-color: #2563eb;
+      }
+      select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 14px;
+        font-family: inherit;
+        background: #fff;
+        cursor: pointer;
+      }
+      select:focus {
+        outline: none;
+        border-color: #2563eb;
+      }
+      .form-group {
+        margin-bottom: 18px;
+      }
+      .row {
+        display: flex;
+        gap: 16px;
+      }
+      .row .form-group {
+        flex: 1;
+      }
+      button {
+        width: 100%;
+        padding: 12px;
+        background: #2563eb;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      button:hover {
+        background: #1d4ed8;
+      }
+      button:active {
+        background: #1e40af;
+      }
+      button:disabled {
+        background: #93c5fd;
+        cursor: not-allowed;
+      }
+      .error {
+        color: #dc2626;
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        padding: 12px;
+        border-radius: 6px;
+        margin-bottom: 16px;
+        font-size: 14px;
+        display: none;
+      }
+      .note {
+        font-size: 12px;
+        color: #9ca3af;
+        margin-top: 4px;
+      }
+      #result {
+        display: none;
+      }
+      .result-header {
+        text-align: center;
+        font-size: 16px;
+        color: #666;
+        margin-bottom: 12px;
+      }
+      .result-label {
+        font-size: 32px;
+        font-weight: 700;
+        text-align: center;
+        margin: 8px 0 4px;
+      }
+      .result-confidence {
+        text-align: center;
+        color: #555;
+        font-size: 18px;
+      }
+      .label-Real {
+        color: #16a34a;
+      }
+      .label-Spam {
+        color: #ea580c;
+      }
+      .label-Fake {
+        color: #dc2626;
+      }
+      @media (max-width: 500px) {
+        .row {
+          flex-direction: column;
+          gap: 0;
         }
-        h1 {
-            text-align: center;
-            margin-bottom: 8px;
-            font-size: 28px;
-            color: #111;
-        }
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 24px;
-            font-size: 14px;
-        }
-        .card {
-            background: #fff;
-            padding: 28px;
-            border-radius: 10px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: 600;
-            font-size: 14px;
-            color: #333;
-        }
-        textarea {
-            width: 100%;
-            height: 130px;
-            padding: 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            resize: vertical;
-            font-size: 14px;
-            font-family: inherit;
-            transition: border-color 0.2s;
-        }
-        textarea:focus { outline: none; border-color: #2563eb; }
-        select {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 14px;
-            font-family: inherit;
-            background: #fff;
-            cursor: pointer;
-        }
-        select:focus { outline: none; border-color: #2563eb; }
-        .form-group { margin-bottom: 18px; }
-        .row { display: flex; gap: 16px; }
-        .row .form-group { flex: 1; }
-        button {
-            width: 100%;
-            padding: 12px;
-            background: #2563eb;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        button:hover { background: #1d4ed8; }
-        button:active { background: #1e40af; }
-        button:disabled { background: #93c5fd; cursor: not-allowed; }
-        .error {
-            color: #dc2626;
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 16px;
-            font-size: 14px;
-            display: none;
-        }
-        .note {
-            font-size: 12px;
-            color: #9ca3af;
-            margin-top: 4px;
-        }
-        #result {
-            display: none;
-        }
-        .result-header {
-            text-align: center;
-            font-size: 16px;
-            color: #666;
-            margin-bottom: 12px;
-        }
-        .result-label {
-            font-size: 32px;
-            font-weight: 700;
-            text-align: center;
-            margin: 8px 0 4px;
-        }
-        .result-confidence {
-            text-align: center;
-            color: #555;
-            font-size: 18px;
-        }
-        .label-Real { color: #16a34a; }
-        .label-Spam { color: #ea580c; }
-        .label-Fake { color: #dc2626; }
-        @media (max-width: 500px) {
-            .row { flex-direction: column; gap: 0; }
-        }
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Fake Review Detector</h1>
     <p class="subtitle">Stacking Ensemble: GatedFusion + TextSCNN + XGBoost</p>
 
     <div class="card">
-        <div class="error" id="errorBox"></div>
+      <div class="error" id="errorBox"></div>
 
-        <form id="reviewForm">
-            <div class="form-group">
-                <label for="text">Review Text</label>
-                <textarea name="text" id="text"
-                    placeholder="Paste a product review here..."
-                    required></textarea>
-            </div>
+      <form id="reviewForm">
+        <div class="form-group">
+          <label for="text">Review Text</label>
+          <textarea
+            name="text"
+            id="text"
+            placeholder="Paste a product review here..."
+            required
+          ></textarea>
+        </div>
 
-            <div class="row">
-                <div class="form-group">
-                    <label for="rating">Rating</label>
-                    <select name="rating" id="rating">
-                        {% for r in [1, 2, 3, 4, 5] %}
-                        <option value="{{ r }}.0">{{ r }} Star{{ 's' if r > 1 else '' }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="category">Category</label>
-                    <select name="category" id="category">
-                        {% for cat in categories %}
-                        <option value="{{ cat }}">{{ cat | replace('_', ' ') }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="note">Category is shown for context but does not affect the prediction.</div>
-                </div>
-            </div>
+        <div class="row">
+          <div class="form-group">
+            <label for="rating">Rating</label>
+            <select name="rating" id="rating">
+              {% for r in [1, 2, 3, 4, 5] %}
+              <option value="{{ r }}.0">
+                {{ r }} Star{{ 's' if r > 1 else '' }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="category">Category</label>
+            <select name="category" id="category">
+              {% for cat in categories %}
+              <option value="{{ cat }}">{{ cat | replace('_', ' ') }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
 
-            <button type="submit" id="submitBtn">Analyze Review</button>
-        </form>
+        <button type="submit" id="submitBtn">Analyze Review</button>
+      </form>
     </div>
 
     <div class="card" id="result">
-        <div class="result-header">Prediction Result</div>
-        <div class="result-label" id="predLabel"></div>
-        <div class="result-confidence" id="predConf"></div>
+      <div class="result-header">Prediction Result</div>
+      <div class="result-label" id="predLabel"></div>
+      <div class="result-confidence" id="predConf"></div>
     </div>
 
     <script>
-        document.getElementById('reviewForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('submitBtn');
-            const errorBox = document.getElementById('errorBox');
-            const resultDiv = document.getElementById('result');
+      document
+        .getElementById("reviewForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const btn = document.getElementById("submitBtn");
+          const errorBox = document.getElementById("errorBox");
+          const resultDiv = document.getElementById("result");
 
-            errorBox.style.display = 'none';
-            resultDiv.style.display = 'none';
-            btn.disabled = true;
-            btn.textContent = 'Analyzing...';
+          errorBox.style.display = "none";
+          resultDiv.style.display = "none";
+          btn.disabled = true;
+          btn.textContent = "Analyzing...";
 
-            const text = document.getElementById('text').value;
-            const rating = parseFloat(document.getElementById('rating').value);
-            const category = document.getElementById('category').value;
+          const text = document.getElementById("text").value;
+          const rating = parseFloat(document.getElementById("rating").value);
+          const category = document.getElementById("category").value;
 
-            try {
-                const response = await fetch('/predict', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text, rating, category })
-                });
-                const data = await response.json();
+          try {
+            const response = await fetch("/predict", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text, rating, category }),
+            });
+            const data = await response.json();
 
-                if (!response.ok) {
-                    errorBox.textContent = data.error || 'Something went wrong.';
-                    errorBox.style.display = 'block';
-                } else {
-                    const label = document.getElementById('predLabel');
-                    label.textContent = data.prediction;
-                    label.className = 'result-label label-' + data.prediction;
+            if (!response.ok) {
+              errorBox.textContent = data.error || "Something went wrong.";
+              errorBox.style.display = "block";
+            } else {
+              const label = document.getElementById("predLabel");
+              label.textContent = data.prediction;
+              label.className = "result-label label-" + data.prediction;
 
-                    document.getElementById('predConf').textContent =
-                        'Confidence: ' + data.confidence + '%';
+              document.getElementById("predConf").textContent =
+                "Confidence: " + data.confidence + "%";
 
-                    resultDiv.style.display = 'block';
-                }
-            } catch (err) {
-                errorBox.textContent = 'Network error. Is the server running?';
-                errorBox.style.display = 'block';
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Analyze Review';
+              resultDiv.style.display = "block";
             }
+          } catch (err) {
+            errorBox.textContent = "Network error. Is the server running?";
+            errorBox.style.display = "block";
+          } finally {
+            btn.disabled = false;
+            btn.textContent = "Analyze Review";
+          }
         });
     </script>
-</body>
+  </body>
 </html>
