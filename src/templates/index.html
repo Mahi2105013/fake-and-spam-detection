@@ -150,6 +150,47 @@
       .label-Fake {
         color: #dc2626;
       }
+      .explain-section {
+        margin-top: 18px;
+      }
+      .explain-title {
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: #1f2937;
+      }
+      .explain-list {
+        list-style: none;
+        display: grid;
+        gap: 7px;
+      }
+      .explain-item {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 8px 10px;
+        background: #fafafa;
+        font-size: 13px;
+      }
+      .pill {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 2px 8px;
+        font-size: 11px;
+        font-weight: 700;
+        margin-left: 6px;
+      }
+      .pill-positive {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .pill-negative {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .muted {
+        color: #6b7280;
+        font-size: 12px;
+      }
       @media (max-width: 500px) {
         .row {
           flex-direction: column;
@@ -205,6 +246,18 @@
       <div class="result-header">Prediction Result</div>
       <div class="result-label" id="predLabel"></div>
       <div class="result-confidence" id="predConf"></div>
+
+      <div class="explain-section">
+        <div class="explain-title">Metadata SHAP (Which metadata mattered most)</div>
+        <ul class="explain-list" id="metaShapList"></ul>
+        <div class="muted" id="metaShapNote"></div>
+      </div>
+
+      <div class="explain-section">
+        <div class="explain-title">Text Influence (BERT attention)</div>
+        <ul class="explain-list" id="tokenList"></ul>
+        <div class="muted" id="tokenNote"></div>
+      </div>
     </div>
 
     <script>
@@ -215,9 +268,17 @@
           const btn = document.getElementById("submitBtn");
           const errorBox = document.getElementById("errorBox");
           const resultDiv = document.getElementById("result");
+          const metaShapList = document.getElementById("metaShapList");
+          const tokenList = document.getElementById("tokenList");
+          const metaShapNote = document.getElementById("metaShapNote");
+          const tokenNote = document.getElementById("tokenNote");
 
           errorBox.style.display = "none";
           resultDiv.style.display = "none";
+          metaShapList.innerHTML = "";
+          tokenList.innerHTML = "";
+          metaShapNote.textContent = "";
+          tokenNote.textContent = "";
           btn.disabled = true;
           btn.textContent = "Analyzing...";
 
@@ -243,6 +304,52 @@
 
               document.getElementById("predConf").textContent =
                 "Confidence: " + data.confidence + "%";
+
+              const metaShap = data.explanations?.metadata_shap;
+              if (metaShap?.available && Array.isArray(metaShap.top_features)) {
+                metaShap.top_features.forEach((item) => {
+                  const li = document.createElement("li");
+                  li.className = "explain-item";
+                  const signClass =
+                    item.shap_impact >= 0 ? "pill-positive" : "pill-negative";
+                  const direction = item.shap_impact >= 0 ? "toward" : "away";
+                  li.innerHTML =
+                    "<strong>" +
+                    item.feature +
+                    "</strong> (value: " +
+                    item.value +
+                    ")" +
+                    '<span class="pill ' +
+                    signClass +
+                    '">' +
+                    direction +
+                    "</span><br/>Impact: " +
+                    item.impact_percent +
+                    "% (SHAP: " +
+                    item.shap_impact +
+                    ")";
+                  metaShapList.appendChild(li);
+                });
+              } else {
+                metaShapNote.textContent = metaShap?.reason || "No SHAP explanation available.";
+              }
+
+              const tokenAttention = data.explanations?.token_attention;
+              if (tokenAttention?.available && Array.isArray(tokenAttention.top_tokens)) {
+                tokenAttention.top_tokens.forEach((item) => {
+                  const li = document.createElement("li");
+                  li.className = "explain-item";
+                  li.innerHTML =
+                    "<strong>" +
+                    item.token +
+                    "</strong> attention score: " +
+                    item.attention_score;
+                  tokenList.appendChild(li);
+                });
+                tokenNote.textContent = "Higher attention score means stronger influence from the final RoBERTa attention layer.";
+              } else {
+                tokenNote.textContent = tokenAttention?.reason || "No token explanation available.";
+              }
 
               resultDiv.style.display = "block";
             }

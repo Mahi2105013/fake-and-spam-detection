@@ -33,6 +33,7 @@ def create_app(predictor=None):
         text = data.get('text', '').strip()
         rating = data.get('rating', 3.0)
         category = data.get('category', 'Electronics')
+        include_bertviz = bool(data.get('include_bertviz', False))
 
         if not text:
             return jsonify({'error': 'Review text is required'}), 400
@@ -45,7 +46,11 @@ def create_app(predictor=None):
         if category not in CATEGORIES:
             return jsonify({'error': 'Invalid category'}), 400
 
-        result = app.config['PREDICTOR'].predict(text, rating, category)
+        if include_bertviz:
+            result = app.config['PREDICTOR'].predict(
+                text, rating, category, include_bertviz=True)
+        else:
+            result = app.config['PREDICTOR'].predict(text, rating, category)
         return jsonify(result)
 
     return app
