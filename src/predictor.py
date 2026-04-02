@@ -24,6 +24,7 @@ META_FEATURE_NAMES = [
     'has_url',
     'avg_word_length',
     'punctuation_density',
+    'has_promo',
     'type_token_ratio',
     'rating',
     'category_Electronics',
