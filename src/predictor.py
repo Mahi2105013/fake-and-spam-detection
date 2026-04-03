@@ -20,13 +20,15 @@ META_FEATURE_NAMES = [
     'review_length',
     'word_count',
     'exclamation_count',
-    'uppercase_ratio',
+    'all_caps_ratio',
+    'sentence_caps_ratio',
     'has_url',
     'avg_word_length',
     'punctuation_density',
-    'has_promo',
     'type_token_ratio',
-    'rating',
+    'rating_norm',
+    'rating_sentiment_mismatch',
+    'has_promo',
     'category_Electronics',
     'category_Home_and_Kitchen',
     'category_Toys_and_Games',
@@ -283,11 +285,11 @@ class StackingPredictor:
             scnn_probs = torch.softmax(scnn_out.logits, dim=1).cpu().numpy()
 
         # Base model 3: XGBoost
+        XGB_META_COLS = [i for i in range(META_DIM) if i != 9]
         tfidf_vec = self.tfidf.transform([text])
-        xgb_features = sparse_hstack([tfidf_vec, meta])
+        xgb_features = sparse_hstack([tfidf_vec, meta[:, XGB_META_COLS]])
         xgb_probs = self.xgb_model.predict_proba(xgb_features)
 
-        # Stack (1, 9) and feed to meta-learner
         stacked = np.hstack([gf_probs, scnn_probs, xgb_probs])
         final_probs = self.meta_learner.predict_proba(stacked)
 

@@ -3,16 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import RobertaModel
 
-META_DIM = 14
+META_DIM = 17
 
 
 class GatedFusionModel(nn.Module):
-    """RoBERTa CLS [768] + Metadata MLP [32] with learned gating fusion.
-
-    Gate = sigmoid(W * [CLS ; meta])  -- learns how much to trust each source.
-    Fused = gate * CLS + (1-gate) * meta_expanded
-    Classification head: Dense(256) -> GELU -> Dense(128) -> GELU -> Dense(num_labels)
-    """
+ 
 
     def __init__(self, roberta_name='roberta-base', num_labels=3,
                  meta_dim=META_DIM, meta_hidden=32, dropout=0.3,
@@ -69,12 +64,7 @@ class GatedFusionModel(nn.Module):
 
 
 class TextSCNN(nn.Module):
-    """Sentence-level hierarchical CNN.
-
-    Step 1: Split review into sentences (fixed grid), run sentence-level convolutions.
-    Step 2: Run document-level convolutions over the sentence feature vectors.
-    Step 3: Classify with a dense head.
-    """
+  
 
     def __init__(self, vocab_size, embed_dim=128, num_labels=3,
                  sentence_per_review=8, words_per_sentence=16,
