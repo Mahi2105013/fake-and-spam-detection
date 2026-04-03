@@ -1,4 +1,5 @@
 import os
+import json
 import numpy as np
 import pandas as pd
 import torch
@@ -17,23 +18,23 @@ from .preprocessing import extract_metadata, get_preds_conf, CLASS_NAMES
 VOCAB_SIZE = 50265   # roberta-base tokenizer vocab size
 MAX_LENGTH = 128     # same as notebook training
 META_FEATURE_NAMES = [
-    'review_length',
-    'word_count',
-    'exclamation_count',
-    'all_caps_ratio',
-    'sentence_caps_ratio',
-    'has_url',
-    'avg_word_length',
-    'punctuation_density',
-    'type_token_ratio',
-    'rating_norm',
-    'rating_sentiment_mismatch',
-    'has_promo',
-    'category_Electronics',
-    'category_Home_and_Kitchen',
-    'category_Toys_and_Games',
-    'category_Sports_and_Outdoors',
-    'category_Clothing_Shoes_and_Jewelry',
+   "review_length",           # 0
+    "word_count",              # 1
+    "exclamation_count",       # 2
+    "all_caps_ratio",          # 3  ← NEW: only SHOUTING caps like BUY NOW
+    "sentence_caps_ratio",     # 4  ← NEW: normal sentence/pronoun caps
+    "has_url",                 # 5
+    "avg_word_length",         # 6
+    "punctuation_density",     # 7
+    "type_token_ratio",        # 8
+    "rating_norm",             # 9
+    "rating_sentiment_mismatch", # 10 ← NEW
+    "has_promo",               # 11
+    "category_Electronics",    # 12
+    "category_Home_and_Kitchen", # 13
+    "category_Toys_and_Games", # 14
+    "category_Sports_and_Outdoors", # 15
+    "category_Clothing_Shoes_and_Jewelry", # 16
 ]
 
 
@@ -45,7 +46,10 @@ class StackingPredictor:
     """
 
     def __init__(self, models_dir):
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        # For web service: load models on CPU by default.
+        # This avoids GPU OOM issues on shared/constrained infrastructure.
+        # Inference speed on CPU is acceptable for most reviews.
+        self.device = torch.device('cpu')
         self.models_dir = self._resolve_models_dir(models_dir)
         self._load_all()
 
@@ -115,7 +119,19 @@ class StackingPredictor:
         # 6. Meta-learner (LogisticRegression)
         self.meta_learner = joblib.load(os.path.join(d, 'meta_learner.pkl'))
 
-        # 7. Optional SHAP explainer for metadata attribution on XGBoost branch
+        # 7. Optional dataset-level evaluation metrics for UI display
+        self.model_metrics = None
+        metrics_path = os.path.join(d, 'metrics.json')
+        if os.path.isfile(metrics_path):
+            try:
+                with open(metrics_path, 'r', encoding='utf-8') as f:
+                    parsed = json.load(f)
+                if isinstance(parsed, dict):
+                    self.model_metrics = parsed
+            except Exception:
+                self.model_metrics = None
+
+        # 8. Optional SHAP explainer for metadata attribution on XGBoost branch
         self._shap_explainer = None
         self._shap_error = None
         if shap is None:
@@ -284,8 +300,9 @@ class StackingPredictor:
             scnn_out = self.textscnn(input_ids=input_ids)
             scnn_probs = torch.softmax(scnn_out.logits, dim=1).cpu().numpy()
 
-        # Base model 3: XGBoost
-        XGB_META_COLS = [i for i in range(META_DIM) if i != 9]
+        
+        XGB_DROP = {6,9}
+        XGB_META_COLS = [i for i in range(META_DIM) if i not in XGB_DROP]
         tfidf_vec = self.tfidf.transform([text])
         xgb_features = sparse_hstack([tfidf_vec, meta[:, XGB_META_COLS]])
         xgb_probs = self.xgb_model.predict_proba(xgb_features)
@@ -314,6 +331,7 @@ class StackingPredictor:
                 name: round(float(p) * 100, 1)
                 for name, p in zip(CLASS_NAMES, final_probs[0])
             },
+            'model_metrics': self.model_metrics,
             'explanations': {
                 'metadata_shap': meta_explanation,
                 'token_attention': token_explanation,

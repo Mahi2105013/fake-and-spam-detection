@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
+import re as _re
 from textblob import TextBlob
 
-META_DIM = 17
+META_DIM = 18
 
 CATEGORIES = [
     'Home_and_Kitchen',
@@ -18,12 +19,13 @@ CLASS_NAMES = ['Real', 'Spam', 'Fake']
 def extract_metadata(df):
   
     meta = pd.DataFrame()
+
     meta['review_length']     = df['text'].str.len()
     meta['word_count']        = df['text'].str.split().str.len()
     meta['exclamation_count'] = df['text'].str.count('!')
 
     def all_caps_ratio(text):
-  
+        
         words = text.split()
         if not words: return 0.0
         all_caps_chars = sum(len(w) for w in words
@@ -31,7 +33,6 @@ def extract_metadata(df):
         return all_caps_chars / (len(text) + 1)
 
     def sentence_caps_ratio(text):
-
         upper_total = sum(1 for c in text if c.isupper())
         words = text.split()
         all_caps_chars = sum(len(w) for w in words
@@ -71,16 +72,7 @@ def extract_metadata(df):
     return meta.values.astype(np.float32)
 
 def compute_rating_sample_weights(df):
-    """Compute normalized sample weights from label and rating frequency.
-
-    The final weight is a blend of:
-    - label imbalance: keeps Real from dominating overall training
-    - label/rating imbalance: keeps common rating buckets from overwhelming
-      rare ones within each label
-
-    The weights are normalized to mean 1.0 so they rebalance the loss without
-    making training unstable.
-    """
+    
     tmp = df[['label', 'rating']].copy()
     tmp['rating'] = tmp['rating'].fillna(3.0).astype(float)
 
@@ -103,7 +95,6 @@ def compute_rating_sample_weights(df):
 
 
 def get_preds_conf(probs):
-    """Return (hard predictions, confidence = max probability) from a probability array."""
     preds = np.argmax(probs, axis=1)
     conf  = np.max(probs, axis=1)
     return preds, conf

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from transformers import RobertaModel
+from transformers import RobertaConfig, RobertaModel
 
 META_DIM = 17
 
@@ -13,7 +13,15 @@ class GatedFusionModel(nn.Module):
                  meta_dim=META_DIM, meta_hidden=32, dropout=0.3,
                  class_weights=None):
         super().__init__()
-        self.roberta = RobertaModel.from_pretrained(roberta_name)
+        try:
+            self.roberta = RobertaModel.from_pretrained(
+                roberta_name,
+                local_files_only=True,
+            )
+        except Exception:
+            # Fall back to a local config-only initialization so weights can be
+            # restored entirely from the saved PyTorch checkpoint offline.
+            self.roberta = RobertaModel(RobertaConfig())
         hidden = self.roberta.config.hidden_size  # 768
 
         self.meta_mlp = nn.Sequential(
@@ -50,7 +58,7 @@ class GatedFusionModel(nn.Module):
         meta_emb = self.meta_mlp(metadata)                  # [B, meta_hidden]
 
         combined = torch.cat([cls_emb, meta_emb], dim=1)    # [B, 768+meta_hidden]
-        g = torch.sigmoid(self.gate(combined))               # [B, 768]
+        g = 0.2 + 0.6 * torch.sigmoid(self.gate(combined))                # [B, 768]
         meta_exp = self.meta_expand(meta_emb)                # [B, 768]
         fused = g * cls_emb + (1 - g) * meta_exp            # [B, 768]
 

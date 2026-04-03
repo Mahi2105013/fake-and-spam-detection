@@ -139,7 +139,9 @@
       .result-confidence {
         text-align: center;
         color: #555;
-        font-size: 18px;
+        font-size: 16px;
+        line-height: 1.5;
+        margin-top: 8px;
       }
       .label-Real {
         color: #16a34a;
@@ -245,10 +247,12 @@
     <div class="card" id="result">
       <div class="result-header">Prediction Result</div>
       <div class="result-label" id="predLabel"></div>
-      <div class="result-confidence" id="predConf"></div>
+      <div class="result-confidence" id="predProbabilities"></div>
 
       <div class="explain-section">
-        <div class="explain-title">Metadata SHAP (Which metadata mattered most)</div>
+        <div class="explain-title">
+          Metadata SHAP (Which metadata mattered most)
+        </div>
         <ul class="explain-list" id="metaShapList"></ul>
         <div class="muted" id="metaShapNote"></div>
       </div>
@@ -302,8 +306,21 @@
               label.textContent = data.prediction;
               label.className = "result-label label-" + data.prediction;
 
-              document.getElementById("predConf").textContent =
-                "Confidence: " + data.confidence + "%";
+              const probabilities = data.probabilities || {};
+              const orderedClasses = ["Real", "Spam", "Fake"];
+              const formatPercentage = (value) =>
+                typeof value === "number" ? value.toFixed(1) + "%" : "N/A";
+
+              document.getElementById("predProbabilities").textContent =
+                "Probabilities: " +
+                orderedClasses
+                  .map(
+                    (className) =>
+                      className +
+                      "=" +
+                      formatPercentage(probabilities[className]),
+                  )
+                  .join(", ");
 
               const metaShap = data.explanations?.metadata_shap;
               if (metaShap?.available && Array.isArray(metaShap.top_features)) {
@@ -331,11 +348,15 @@
                   metaShapList.appendChild(li);
                 });
               } else {
-                metaShapNote.textContent = metaShap?.reason || "No SHAP explanation available.";
+                metaShapNote.textContent =
+                  metaShap?.reason || "No SHAP explanation available.";
               }
 
               const tokenAttention = data.explanations?.token_attention;
-              if (tokenAttention?.available && Array.isArray(tokenAttention.top_tokens)) {
+              if (
+                tokenAttention?.available &&
+                Array.isArray(tokenAttention.top_tokens)
+              ) {
                 tokenAttention.top_tokens.forEach((item) => {
                   const li = document.createElement("li");
                   li.className = "explain-item";
@@ -346,9 +367,11 @@
                     item.attention_score;
                   tokenList.appendChild(li);
                 });
-                tokenNote.textContent = "Higher attention score means stronger influence from the final RoBERTa attention layer.";
+                tokenNote.textContent =
+                  "Higher attention score means stronger influence from the final RoBERTa attention layer.";
               } else {
-                tokenNote.textContent = tokenAttention?.reason || "No token explanation available.";
+                tokenNote.textContent =
+                  tokenAttention?.reason || "No token explanation available.";
               }
 
               resultDiv.style.display = "block";
