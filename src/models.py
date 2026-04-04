@@ -78,7 +78,8 @@ class TextSCNN(nn.Module):
                  sentence_per_review=8, words_per_sentence=16,
                  filter_widths_sent=(3, 4, 5), num_filters_sent=100,
                  filter_widths_doc=(2, 3), num_filters_doc=100,
-                 dropout=0.3, class_weights=None):
+                 dropout=0.3, class_weights=None,
+                 init_sentence_weights=None, learnable_sentence_weights=True):
         super().__init__()
 
         self.sentence_per_review = sentence_per_review
@@ -86,6 +87,25 @@ class TextSCNN(nn.Module):
         self.max_len = sentence_per_review * words_per_sentence  # 128
 
         self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=1)
+
+        self._weight_eps = 1e-8
+        if init_sentence_weights is None:
+            init_sentence_weights = torch.ones(self.sentence_per_review, dtype=torch.float32)
+        else:
+            init_sentence_weights = torch.tensor(init_sentence_weights, dtype=torch.float32)
+
+        if init_sentence_weights.numel() != self.sentence_per_review:
+            raise ValueError(
+                f"init_sentence_weights length ({init_sentence_weights.numel()}) "
+                f"must match sentence_per_review ({self.sentence_per_review}).")
+
+        init_sentence_weights = init_sentence_weights.clamp(min=self._weight_eps)
+        init_sentence_weights = init_sentence_weights / init_sentence_weights.sum()
+        init_logits = torch.log(init_sentence_weights)
+        if learnable_sentence_weights:
+            self.sentence_weight_logits = nn.Parameter(init_logits)
+        else:
+            self.register_buffer('sentence_weight_logits', init_logits)
 
         self.sent_convs = nn.ModuleList([
             nn.Conv2d(1, num_filters_sent, kernel_size=(fs, embed_dim))
@@ -113,7 +133,7 @@ class TextSCNN(nn.Module):
         else:
             self.loss_fn = nn.CrossEntropyLoss()
 
-    def forward(self, input_ids, labels=None, **kwargs):
+    def forward(self, input_ids, labels=None, sentence_weights=None, **kwargs):
         batch_size = input_ids.size(0)
         seq_len = input_ids.size(1)
 
@@ -140,6 +160,30 @@ class TextSCNN(nn.Module):
         sent_features = torch.cat(sent_features, dim=1).squeeze(3).squeeze(2)
 
         sent_features = sent_features.view(batch_size, self.sentence_per_review, -1)
+
+        # Learnable sentence weights optionally combined with externally-computed
+        # per-sample priors (e.g. KL-divergence sentence importance).
+        combined_logits = self.sentence_weight_logits.unsqueeze(0).expand(batch_size, -1)
+        if sentence_weights is not None:
+            ext = sentence_weights.float().to(input_ids.device)
+            if ext.dim() == 1:
+                ext = ext.unsqueeze(0).expand(batch_size, -1)
+            if ext.size(1) != self.sentence_per_review:
+                if ext.size(1) > self.sentence_per_review:
+                    ext = ext[:, :self.sentence_per_review]
+                else:
+                    pad = torch.zeros(
+                        batch_size,
+                        self.sentence_per_review - ext.size(1),
+                        device=ext.device,
+                        dtype=ext.dtype)
+                    ext = torch.cat([ext, pad], dim=1)
+            ext = ext.clamp(min=0.0)
+            ext = ext / (ext.sum(dim=1, keepdim=True) + self._weight_eps)
+            combined_logits = combined_logits + torch.log(ext + self._weight_eps)
+
+        learned_weights = torch.softmax(combined_logits, dim=1).unsqueeze(-1)
+        sent_features = sent_features * learned_weights
         sent_features = sent_features.unsqueeze(1)
 
         doc_features = []
