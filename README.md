@@ -1,6 +1,6 @@
 # Fake and Spam Reviews Detection
 
-A machine learning project that detects fake, spam, and genuine product reviews using an ensemble of deep learning and traditional ML models. This project combines RoBERTa transformers, CNNs, XGBoost, and metadata features for robust multi-class classification.
+A machine learning project that detects fake, spam, and genuine product reviews using an ensemble of deep learning and traditional ML models. This project combines RoBERTa transformers, CNNs, XGBoost, and metadata features for robust multi-class classification with explainability(SHAP)
 
 ## 📋 Overview
 
